@@ -56,6 +56,8 @@ you can use darknet2pytorch to convert it yourself, or download my converted mod
 
 # 1.Train
 
+[use yolov4 to train your own data](Use_yolov4_to_train_your_own_data.md)
+
 1. Download weight
 2. Transform data
 
@@ -80,32 +82,38 @@ you can use darknet2pytorch to convert it yourself, or download my converted mod
 python demo.py <cfgFile> <weightFile> <imgFile>
 ```
 
-# 3.Conversion to ONNX
+# 3.Darknet2ONNX
 
-- **Run python script to generate onnx model from darknet**
-
-    You can specify batch size (default: batch_size == 1)
+- **Install onnxruntime**
 
     ```sh
-    python darknet2onnx.py <cfgFile> <weightFile>
+    pip install onnxruntime
     ```
 
-    or
+- **Run python script to generate onnx model and run the demo**
 
     ```sh
-    python darknet2onnx.py <cfgFile> <weightFile> <batch_size>
+    python demo_onnx.py <cfgFile> <weightFile> <imageFile> <batchSize>
     ```
 
-- **The demo to run the onnx model**
+  This script will generate 2 onnx models.
 
-    ```sh
-    pip install onnxruntime # If onnxruntime is not installed
-    python demo_onnx.py <path_to_onnx_file> <path_to_sample_image>
-    ```
+  - One is for running the demo (batch_size=1)
+  - The other one is what you want to generate (batch_size=batchSize)
 
-    This demo only support batch_size == 1.
 
-    You have to update the batch dimension of inputs/outputs for other batch sizes.
+# 4.ONNX2Tensorflow
+
+- **First:Conversion to ONNX**
+
+    tensorflow >=2.0
+    
+    1: Thanks:github:https://github.com/onnx/onnx-tensorflow
+    
+    2: Run git clone https://github.com/onnx/onnx-tensorflow.git && cd onnx-tensorflow
+    Run pip install -e .
+    
+    Note:Errors will occur when using "pip install onnx-tf", at least for me,it is recommended to use source code installation
 
 Reference:
 - https://github.com/eriklindernoren/PyTorch-YOLOv3

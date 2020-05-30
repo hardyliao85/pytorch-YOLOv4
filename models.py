@@ -1,5 +1,6 @@
 import torch
 from torch import nn
+import torch.nn.functional as F
 
 
 class Mish(torch.nn.Module):
@@ -12,21 +13,13 @@ class Mish(torch.nn.Module):
 
 
 class Upsample(nn.Module):
-    def __init__(self, stride=2):
+    def __init__(self):
         super(Upsample, self).__init__()
-        self.stride = stride
 
-    def forward(self, x):
-        stride = self.stride
+    def forward(self, x, target_size):
         assert (x.data.dim() == 4)
-        B = x.data.size(0)
-        C = x.data.size(1)
-        H = x.data.size(2)
-        W = x.data.size(3)
-        ws = stride
-        hs = stride
-        x = x.view(B, C, H, 1, W, 1).expand(B, C, H, stride, W, stride).contiguous().view(B, C, H * stride, W * stride)
-        return x
+        _, _, H, W = target_size
+        return F.interpolate(x, size=(H, W), mode='nearest')
 
 
 class Conv_Bn_Activation(nn.Module):
@@ -283,7 +276,7 @@ class Neck(nn.Module):
         x6 = self.conv6(x5)
         x7 = self.conv7(x6)
         # UP
-        up = self.upsample1(x7)
+        up = self.upsample1(x7, downsample4.size())
         # R 85
         x8 = self.conv8(downsample4)
         # R -1 -3
@@ -297,7 +290,7 @@ class Neck(nn.Module):
         x14 = self.conv14(x13)
 
         # UP
-        up = self.upsample2(x14)
+        up = self.upsample2(x14, downsample3.size())
         # R 54
         x15 = self.conv15(downsample3)
         # R -1 -3
@@ -386,11 +379,11 @@ class Yolov4Head(nn.Module):
 
 
 class Yolov4(nn.Module):
-    def __init__(self, yolov4conv137weight=None, n_classes = 80):
+    def __init__(self, yolov4conv137weight=None, n_classes=80):
         super().__init__()
-        
+
         output_ch = (4 + 1 + n_classes) * 3
-        
+
         # backbone
         self.down1 = DownSample1()
         self.down2 = DownSample2()
@@ -427,35 +420,45 @@ class Yolov4(nn.Module):
 
 
 if __name__ == "__main__":
-    model = Yolov4()
+    import sys
+    from PIL import Image
 
-    pretrained_dict = torch.load('weight/yolov4.pth')
-    model_dict = model.state_dict()
-    # 1. filter out unnecessary keys
-    pretrained_dict = {k1: v for (k, v), k1 in zip(pretrained_dict.items(), model_dict)}
-    # 2. overwrite entries in the existing state dict
-    model_dict.update(pretrained_dict)
-    model.load_state_dict(model_dict)
-
-    num_classes = 80
-    if num_classes == 20:
-        namesfile = 'data/voc.names'
-    elif num_classes == 80:
-        namesfile = 'data/coco.names'
+    namesfile = None
+    if len(sys.argv) == 4:
+        n_classes = int(sys.argv[1])
+        weightfile = sys.argv[2]
+        imgfile = sys.argv[3]
+    elif len(sys.argv) == 5:
+        n_classes = int(sys.argv[1])
+        weightfile = sys.argv[2]
+        imgfile = sys.argv[3]
+        namesfile = sys.argv[4]
     else:
-        namesfile = 'data/names'
+        print('Usage: ')
+        print('  python models.py num_classes weightfile imgfile namefile')
+
+    model = Yolov4(n_classes=n_classes)
+
+    pretrained_dict = torch.load(weightfile, map_location=torch.device('cpu'))
+    model.load_state_dict(pretrained_dict)
+
+    if namesfile == None:
+        if n_classes == 20:
+            namesfile = 'data/voc.names'
+        elif n_classes == 80:
+            namesfile = 'data/coco.names'
+        else:
+            print("please give namefile")
 
     use_cuda = 0
     if use_cuda:
         model.cuda()
 
-    from PIL import Image
-
-    img = Image.open("data/dog.jpg").convert('RGB')
+    img = Image.open(imgfile).convert('RGB')
     sized = img.resize((608, 608))
     from tool.utils import *
 
-    boxes = do_detect(model, sized, 0.5, 0.4, use_cuda)
+    boxes = do_detect(model, sized, 0.5, n_classes,0.4, use_cuda)
 
     class_names = load_class_names(namesfile)
     plot_boxes(img, boxes, 'predictions.jpg', class_names)
