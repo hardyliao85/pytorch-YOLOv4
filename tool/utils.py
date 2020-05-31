@@ -316,7 +316,7 @@ def plot_boxes_cv2(img, boxes, savename=None, class_names=None, color=None):
         if len(box) >= 7 and class_names:
             cls_conf = box[5]
             cls_id = box[6]
-            print('%s: %f' % (class_names[cls_id], cls_conf))
+            # print('%s: %f' % (class_names[cls_id], cls_conf))
             classes = len(class_names)
             offset = cls_id * 123457 % classes
             red = get_color(2, offset, classes)
@@ -324,8 +324,8 @@ def plot_boxes_cv2(img, boxes, savename=None, class_names=None, color=None):
             blue = get_color(0, offset, classes)
             if color is None:
                 rgb = (red, green, blue)
-            img = cv2.putText(img, class_names[cls_id], (x1, y1), cv2.FONT_HERSHEY_SIMPLEX, 1.2, rgb, 1)
-        img = cv2.rectangle(img, (x1, y1), (x2, y2), rgb, 1)
+            img = cv2.putText(img, class_names[cls_id], (x1, y1), cv2.FONT_HERSHEY_SIMPLEX, 1.2, rgb, 3)
+        img = cv2.rectangle(img, (x1, y1), (x2, y2), rgb, 3)
     if savename:
         print("save plot results to %s" % savename)
         cv2.imwrite(savename, img)
@@ -346,6 +346,10 @@ def plot_boxes(img, boxes, savename=None, class_names=None):
     width = img.width
     height = img.height
     draw = ImageDraw.Draw(img)
+    font_type = "arial.ttf"
+    font_size = 70
+    font = ImageFont.truetype(font_type, font_size, encoding='utf-8')
+
     for i in range(len(boxes)):
         box = boxes[i]
         x1 = (box[0] - box[2] / 2.0) * width
@@ -364,8 +368,8 @@ def plot_boxes(img, boxes, savename=None, class_names=None):
             green = get_color(1, offset, classes)
             blue = get_color(0, offset, classes)
             rgb = (red, green, blue)
-            draw.text((x1, y1), class_names[cls_id], fill=rgb)
-        draw.rectangle([x1, y1, x2, y2], outline=rgb)
+            draw.text((x1, y1), class_names[cls_id], fill=rgb, font=font)
+        draw.rectangle([x1, y1, x2, y2], outline=rgb, width=8)
     if savename:
         print("save plot results to %s" % savename)
         img.save(savename)

@@ -418,13 +418,34 @@ class Yolov4(nn.Module):
         output = self.head(x20, x13, x6)
         return output
 
+def compute(boxes):
+        total=0
+        for i in range(len(boxes)):
+            box = boxes[i]
+            if(box[6]==0):
+                total+=1
+            elif(box[6]==1):
+                total+=5
+            elif(box[6]==2):
+                total+=10
+            elif(box[6]==3):
+                total+=50
+        return total
+
+
+
 
 if __name__ == "__main__":
     import sys
     from PIL import Image
+    from tool.utils import *
+    import cv2
 
     namesfile = None
-    if len(sys.argv) == 4:
+    if len(sys.argv) == 3:
+        n_classes = int(sys.argv[1])
+        weightfile = sys.argv[2]
+    elif len(sys.argv) == 4:
         n_classes = int(sys.argv[1])
         weightfile = sys.argv[2]
         imgfile = sys.argv[3]
@@ -447,18 +468,50 @@ if __name__ == "__main__":
             namesfile = 'data/voc.names'
         elif n_classes == 80:
             namesfile = 'data/coco.names'
+        elif n_classes == 4:
+            namesfile = 'data/coin.names'
         else:
             print("please give namefile")
 
-    use_cuda = 0
+    use_cuda = 1
     if use_cuda:
         model.cuda()
 
-    img = Image.open(imgfile).convert('RGB')
-    sized = img.resize((608, 608))
-    from tool.utils import *
 
-    boxes = do_detect(model, sized, 0.5, n_classes,0.4, use_cuda)
+    if len(sys.argv) == 3:
+        print('Loading weights from %s... Done!' % (weightfile))
 
-    class_names = load_class_names(namesfile)
-    plot_boxes(img, boxes, 'predictions.jpg', class_names)
+        # cap = cv2.VideoCapture(0)
+        cap = cv2.VideoCapture('./img/V_20200531_160216_vHDR_On.mp4')
+        print("Starting the YOLO loop...")
+
+        while True:
+            ret, img = cap.read()
+            sized = cv2.resize(img, (608, 608))
+            sized = cv2.cvtColor(sized, cv2.COLOR_BGR2RGB)
+
+            start = time.time()
+            boxes = do_detect(model, sized, 0.5, n_classes, 0.4, use_cuda)
+            finish = time.time()
+            print('Predicted in %f seconds.' % (finish - start))
+
+            class_names = load_class_names(namesfile)
+            result_img = plot_boxes_cv2(img, boxes, savename=None, class_names=class_names)
+            print('total meney: ', compute(boxes))
+
+            cv2.imshow('Yolo demo', result_img)
+            cv2.waitKey(1)
+
+        cap.release()
+
+    else:
+        img = Image.open(imgfile).convert('RGB')
+        sized = img.resize((608, 608))
+
+        from tool.utils import *
+
+        boxes = do_detect(model, sized, 0.5, n_classes,0.4, use_cuda)
+
+        class_names = load_class_names(namesfile)
+        plot_boxes(img, boxes, 'predictions.jpg', class_names)
+        print('total meney: ', compute(boxes))
